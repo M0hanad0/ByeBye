@@ -1,23 +1,44 @@
-{-# LANGUAGE OverloadedLabels  #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
-import Lib
-
+import Data.Foldable (traverse_)
 import Data.GI.Base
+import qualified Data.Map as Map
+import Data.Text (Text)
+import qualified Data.Text as T
 import qualified GI.Gtk as Gtk
 import System.Directory
-import System.Posix.User
 import System.Process
 
-main :: IO ()
-main = do
-  Gtk.init Nothing
+data ImageButton = ImageButton
+  { imgBtnImage :: Gtk.Image,
+    imgBtnButton :: Gtk.Button,
+    imgBtnLabel :: Gtk.Label,
+    imgBtnAction :: IO ()
+  }
 
-  home <- getHomeDirectory
-  user <- getEffectiveUserName
+imageButton :: Text -> Text -> IO () -> IO ImageButton
+imageButton imgPath labelMarkup action = do
+  img <- Gtk.imageNewFromFile $ T.unpack imgPath
+  label <- Gtk.labelNew Nothing
+  Gtk.labelSetMarkup label labelMarkup
+  btn <- Gtk.buttonNew
+  Gtk.buttonSetRelief btn Gtk.ReliefStyleNone
+  Gtk.buttonSetImage btn $ Just img
+  Gtk.widgetSetHexpand btn False
+  on btn #clicked action
+  return $ ImageButton {imgBtnButton = btn, imgBtnImage = img, imgBtnLabel = label, imgBtnAction = action}
 
-  win <- Gtk.windowNew Gtk.WindowTypeToplevel
+surround :: Text -> Text -> Text -> Text
+surround prefix suffix string = prefix `T.append` string `T.append` suffix
+
+surroundTag :: Text -> Text -> Text
+surroundTag = (surround . surround "<" ">") <*> (surround "</" ">")
+
+setup :: Gtk.Window -> IO ()
+setup win = do
   Gtk.setContainerBorderWidth win 10
   Gtk.setWindowTitle win "ByeBye"
   Gtk.setWindowResizable win False
@@ -26,114 +47,51 @@ main = do
   Gtk.setWindowWindowPosition win Gtk.WindowPositionCenter
   Gtk.windowSetDecorated win False
 
-  img1 <- Gtk.imageNewFromFile $ home ++ "/nc/gitlab-repos/src/byebye/img/cancel.png"
-  img2 <- Gtk.imageNewFromFile $ home ++ "/nc/gitlab-repos/src/byebye/img/logout.png"
-  img3 <- Gtk.imageNewFromFile $ home ++ "/nc/gitlab-repos/src/byebye/img/reboot.png"
-  img4 <- Gtk.imageNewFromFile $ home ++ "/nc/gitlab-repos/src/byebye/img/shutdown.png"
-  img5 <- Gtk.imageNewFromFile $ home ++ "/nc/gitlab-repos/src/byebye/img/suspend.png"
-  img6 <- Gtk.imageNewFromFile $ home ++ "/nc/gitlab-repos/src/byebye/img/hibernate.png"
-  img7 <- Gtk.imageNewFromFile $ home ++ "/nc/gitlab-repos/src/byebye/img/lock.png"
+main :: IO ()
+main =
+  do
+    Gtk.init Nothing
 
-  label1 <- Gtk.labelNew Nothing
-  Gtk.labelSetMarkup label1 "<b>Cancel</b>"
+    win <- Gtk.windowNew Gtk.WindowTypeToplevel
+    setup win
 
-  label2 <- Gtk.labelNew Nothing
-  Gtk.labelSetMarkup label2 "<b>Logout</b>"
+    home <- T.pack <$> getHomeDirectory
+    pwd <- T.pack <$> getCurrentDirectory
 
-  label3 <- Gtk.labelNew Nothing
-  Gtk.labelSetMarkup label3 "<b>Reboot</b>"
+    let commands =
+          [ ("cancel", Gtk.widgetDestroy win),
+            ("logout", callCommand "dm-tool switch-to-greeter"),
+            ("reboot", callCommand "reboot"),
+            ("shutdown", callCommand "shutdown now"),
+            ("suspend", callCommand "systemctl suspend"),
+            ("hibernate", callCommand "systemctl hibernate"),
+            ("lock", callCommand "slock")
+          ]
 
-  label4 <- Gtk.labelNew Nothing
-  Gtk.labelSetMarkup label4 "<b>Shutdown</b>"
+    btns <-
+      traverse
+        ( \(cmdName, cmd) ->
+            imageButton
+              (pwd `T.append` "/img/" `T.append` cmdName `T.append` ".png")
+              (surroundTag "b" (T.toTitle cmdName))
+              cmd
+        )
+        commands
 
-  label5 <- Gtk.labelNew Nothing
-  Gtk.labelSetMarkup label5 "<b>Suspend</b>"
+    grid <- Gtk.gridNew
+    Gtk.gridSetColumnSpacing grid 10
+    Gtk.gridSetRowSpacing grid 10
+    Gtk.gridSetColumnHomogeneous grid True
 
-  label6 <- Gtk.labelNew Nothing
-  Gtk.labelSetMarkup label6 "<b>Hibernate</b>"
+    traverse_
+      ( \(i, imgBtn) -> do
+          #attach grid (imgBtnButton imgBtn) i 0 1 1
+          #attach grid (imgBtnLabel imgBtn) i 1 1 1
+      )
+      $ zip [0 ..] btns
 
-  label7 <- Gtk.labelNew Nothing
-  Gtk.labelSetMarkup label7 "<b>Lock</b>"
+    #add win grid
 
-  btn1 <- Gtk.buttonNew
-  Gtk.buttonSetRelief btn1 Gtk.ReliefStyleNone
-  Gtk.buttonSetImage btn1 $ Just img1
-  Gtk.widgetSetHexpand btn1 False
-  on btn1 #clicked $ do
-    putStrLn "User chose: Cancel"
-    Gtk.widgetDestroy win
-
-  btn2 <- Gtk.buttonNew
-  Gtk.buttonSetRelief btn2 Gtk.ReliefStyleNone
-  Gtk.buttonSetImage btn2 $ Just img2
-  Gtk.widgetSetHexpand btn2 False
-  on btn2 #clicked $ do
-    putStrLn "User chose: Logout"
-    --callCommand $ "pkill -u " ++ user
-    callCommand "killall xmonad-x86_64-linux"
-
-  btn3 <- Gtk.buttonNew
-  Gtk.buttonSetRelief btn3 Gtk.ReliefStyleNone
-  Gtk.buttonSetImage btn3 $ Just img3
-  Gtk.widgetSetHexpand btn3 False
-  on btn3 #clicked $ do
-    putStrLn "User chose: Reboot"
-    callCommand "reboot"
-
-  btn4 <- Gtk.buttonNew
-  Gtk.buttonSetRelief btn4 Gtk.ReliefStyleNone
-  Gtk.buttonSetImage btn4 $ Just img4
-  Gtk.widgetSetHexpand btn4 False
-  on btn4 #clicked $ do
-    putStrLn "User chose: Shutdown"
-    callCommand "shutdown -h now"
-
-  btn5 <- Gtk.buttonNew
-  Gtk.buttonSetRelief btn5 Gtk.ReliefStyleNone
-  Gtk.buttonSetImage btn5 $ Just img5
-  Gtk.widgetSetHexpand btn5 False
-  on btn5 #clicked $ do
-    putStrLn "User chose: Suspend"
-    callCommand "systemctl suspend"
-
-  btn6 <- Gtk.buttonNew
-  Gtk.buttonSetRelief btn6 Gtk.ReliefStyleNone
-  Gtk.buttonSetImage btn6 $ Just img6
-  Gtk.widgetSetHexpand btn6 False
-  on btn6 #clicked $ do
-    putStrLn "User chose: Hibernate"
-    callCommand "systemctl hibernate"
-
-  btn7 <- Gtk.buttonNew
-  Gtk.buttonSetRelief btn7 Gtk.ReliefStyleNone
-  Gtk.buttonSetImage btn7 $ Just img7
-  Gtk.widgetSetHexpand btn7 False
-  on btn7 #clicked $ do
-    putStrLn "User chose: Lock"
-    callCommand "slock"
-
-  grid <- Gtk.gridNew
-  Gtk.gridSetColumnSpacing grid 10
-  Gtk.gridSetRowSpacing grid 10
-  Gtk.gridSetColumnHomogeneous grid True
-
-  #attach grid btn1   0 0 1 1
-  #attach grid label1 0 1 1 1
-  #attach grid btn2   1 0 1 1
-  #attach grid label2 1 1 1 1
-  #attach grid btn3   2 0 1 1
-  #attach grid label3 2 1 1 1
-  #attach grid btn4   3 0 1 1
-  #attach grid label4 3 1 1 1
-  #attach grid btn5   4 0 1 1
-  #attach grid label5 4 1 1 1
-  #attach grid btn6   5 0 1 1
-  #attach grid label6 5 1 1 1
-  #attach grid btn7   6 0 1 1
-  #attach grid label7 6 1 1 1
-
-  #add win grid
-
-  Gtk.onWidgetDestroy win Gtk.mainQuit
-  #showAll win
-  Gtk.main
+    Gtk.onWidgetDestroy win Gtk.mainQuit
+    #showAll win
+    Gtk.main

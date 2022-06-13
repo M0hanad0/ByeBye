@@ -32,11 +32,13 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , containers
     , directory
     , gi-gtk ==3.0.*
     , gi-gtk-hs
     , haskell-gi-base
     , process
+    , text
     , unix
   default-language: Haskell2010
 
@@ -50,11 +52,13 @@ executable byebye-exe
   build-depends:
       base >=4.7 && <5
     , byebye
+    , containers
     , directory
     , gi-gtk ==3.0.*
     , gi-gtk-hs
     , haskell-gi-base
     , process
+    , text
     , unix
   default-language: Haskell2010
 
@@ -69,10 +73,12 @@ test-suite byebye-test
   build-depends:
       base >=4.7 && <5
     , byebye
+    , containers
     , directory
     , gi-gtk ==3.0.*
     , gi-gtk-hs
     , haskell-gi-base
     , process
+    , text
     , unix
   default-language: Haskell2010

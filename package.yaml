@@ -1,14 +1,14 @@
-name:                byebye
-version:             0.1.0.0
-github:              "githubuser/byebye"
-license:             GPL-3
-author:              "Derek Taylor"
-maintainer:          "derek@distrotube.com"
-copyright:           "2022 Derek Taylor"
+name: byebye
+version: 0.1.0.0
+github: "githubuser/byebye"
+license: GPL-3
+author: "Derek Taylor"
+maintainer: "derek@distrotube.com"
+copyright: "2022 Derek Taylor"
 
 extra-source-files:
-- README.md
-- ChangeLog.md
+  - README.md
+  - ChangeLog.md
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -17,38 +17,40 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/byebye#readme>
+description: Please see the README on GitHub at <https://github.com/githubuser/byebye#readme>
 
 dependencies:
-- base >= 4.7 && < 5
-- directory
-- gi-gtk == 3.0.*
-- gi-gtk-hs
-- haskell-gi-base
-- process
-- unix
+  - base >= 4.7 && < 5
+  - directory
+  - gi-gtk == 3.0.*
+  - gi-gtk-hs
+  - haskell-gi-base
+  - process
+  - unix
+  - containers
+  - text
 
 library:
   source-dirs: src
 
 executables:
   byebye-exe:
-    main:                Main.hs
-    source-dirs:         app
+    main: Main.hs
+    source-dirs: app
     ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
     dependencies:
-    - byebye
+      - byebye
 
 tests:
   byebye-test:
-    main:                Spec.hs
-    source-dirs:         test
+    main: Spec.hs
+    source-dirs: test
     ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
     dependencies:
-    - byebye
+      - byebye
